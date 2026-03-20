@@ -3,7 +3,7 @@
 > Most analytics dashboards are just Excel sheets. This one isn't.
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-View_Dashboard-c8f04a?style=for-the-badge)](https://bvsappalaraju1346-oss.github.io/storePlus/)
-[![Stack](https://img.shields.io/badge/Stack-Python_%7C_JS_%7C_Chart.js-1a1a2e?style=for-the-badge)]()
+
 
 ---
 
