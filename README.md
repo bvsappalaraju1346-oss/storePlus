@@ -2,7 +2,7 @@
 
 > Most analytics dashboards are just Excel sheets. This one isn't.
 
-[![Live Demo](https://bvsappalaraju1346-oss.github.io/storepulse-dashboard/)
+[![Live Demo](https://bvsappalaraju1346-oss.github.io/storePlus/)
 
 ---
 
