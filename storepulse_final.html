@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StorePulse — E-Commerce Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:wght@300;400;500;600&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ─────────────────────────────────────────
+   TOKENS  — one place to change the mood
+───────────────────────────────────────── */
+:root{
+  --ink:    #1a1a2e;
+  --ink2:   #16213e;
+  --ink3:   #0f3460;
+  --paper:  #f0ebe3;
+  --paper2: #e8e0d5;
+  --paper3: #ddd5c8;
+  --lime:   #c8f04a;
+  --lime2:  #b0d93a;
+  --rust:   #e85d38;
+  --sky:    #4ab8f0;
+  --violet: #9b72cf;
+  --gold:   #f4b942;
+  --text:   #1a1a2e;
+  --muted:  #7a7060;
+  --fh: 'Fraunces', Georgia, serif;
+  --fb: 'DM Sans', sans-serif;
+  --fm: 'Fira Code', monospace;
+  --r: 10px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+
+body{
+  background:var(--paper);
+  color:var(--text);
+  font-family:var(--fb);
+  min-height:100vh;
+  cursor:default;
+}
+
+/* subtle paper grain */
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+  pointer-events:none;
+}
+
+.page{position:relative;z-index:1;max-width:1380px;margin:0 auto;padding:0 32px 100px}
+
+/* ── SIDEBAR NAV ── */
+.layout{display:flex;gap:0;min-height:100vh}
+
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--ink);
+  min-height:100vh;
+  padding:32px 0;
+  position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+  gap:0;
+  border-right:3px solid var(--lime);
+}
+.sidebar-brand{
+  padding:0 24px 32px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  margin-bottom:24px;
+}
+.brand-logo{
+  font-family:var(--fh);
+  font-size:26px;
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-.02em;
+  line-height:1;
+}
+.brand-logo span{color:var(--lime)}
+.brand-sub{
+  font-family:var(--fm);
+  font-size:9px;
+  color:rgba(255,255,255,.3);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  margin-top:4px;
+}
+
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 24px;
+  font-size:13px;font-weight:500;
+  color:rgba(255,255,255,.45);
+  cursor:pointer;
+  border-left:3px solid transparent;
+  margin-left:-3px;
+  transition:all .18s;
+  border:none;background:none;width:100%;text-align:left;
+  font-family:var(--fb);
+}
+.nav-item:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.04)}
+.nav-item.active{
+  color:#fff;
+  background:rgba(200,240,74,.08);
+  border-left:3px solid var(--lime);
+  margin-left:0;
+}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+
+.sidebar-footer{
+  margin-top:auto;padding:20px 24px;
+  border-top:1px solid rgba(255,255,255,.08);
+  font-family:var(--fm);font-size:9px;
+  color:rgba(255,255,255,.2);
+  line-height:1.8;
+}
+.live-row{display:flex;align-items:center;gap:6px;color:var(--lime);margin-bottom:4px;font-size:10px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
+
+/* ── MAIN CONTENT ── */
+.main{flex:1;padding:36px 40px 60px;overflow-x:hidden}
+
+/* ── TOPBAR ── */
+.topbar{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  margin-bottom:36px;flex-wrap:wrap;gap:16px;
+}
+.page-title{
+  font-family:var(--fh);
+  font-size:clamp(28px,3.5vw,44px);
+  font-weight:700;
+  color:var(--ink);
+  letter-spacing:-.03em;
+  line-height:1.1;
+}
+.page-title em{color:var(--rust);font-style:italic;font-weight:300}
+.page-date{
+  font-family:var(--fm);
+  font-size:11px;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.topbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search-wrap{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;
+  border:1.5px solid var(--paper3);
+  border-radius:var(--r);
+  padding:9px 14px;
+  transition:border-color .2s;box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.search-wrap:focus-within{border-color:var(--lime2)}
+.search-wrap input{
+  border:none;outline:none;background:none;
+  font-family:var(--fb);font-size:13px;color:var(--text);width:180px;
+}
+.search-wrap input::placeholder{color:var(--muted)}
+
+.btn{
+  padding:9px 20px;border-radius:var(--r);
+  font-family:var(--fb);font-size:13px;font-weight:600;
+  cursor:pointer;border:none;transition:all .18s;
+}
+.btn-primary{background:var(--ink);color:var(--lime);box-shadow:0 2px 8px rgba(26,26,46,.2)}
+.btn-primary:hover{background:var(--ink3);transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,26,46,.3)}
+.btn-ghost{background:#fff;color:var(--text);border:1.5px solid var(--paper3)}
+.btn-ghost:hover{border-color:var(--ink);background:var(--paper)}
+
+/* ── FILTER STRIP ── */
+.filter-strip{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:#fff;
+  border:1.5px solid var(--paper3);
+  border-radius:var(--r);
+  padding:10px 16px;
+  margin-bottom:28px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+}
+.fs-label{font-family:var(--fm);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.fc{
+  padding:5px 13px;border-radius:6px;border:1.5px solid transparent;
+  font-family:var(--fb);font-size:12px;font-weight:500;
+  cursor:pointer;background:none;color:var(--muted);transition:all .15s;
+}
+.fc:hover{color:var(--text);background:var(--paper)}
+.fc.on{background:var(--ink);color:var(--lime);border-color:var(--ink)}
+.fs-sep{width:1px;height:20px;background:var(--paper3);margin:0 4px}
+
+/* ── KPI SECTION ── */
+/* intentionally asymmetric — 2 big + 3 small */
+.kpi-section{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;
+  gap:14px;
+  margin-bottom:28px;
+}
+@media(max-width:1100px){.kpi-section{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:700px){.kpi-section{grid-template-columns:1fr 1fr}}
+
+.kpi-big{
+  background:var(--ink);
+  border-radius:14px;
+  padding:28px 26px;
+  position:relative;overflow:hidden;
+  animation:slideUp .5s both;
+}
+.kpi-big::after{
+  content:'';position:absolute;
+  bottom:-30px;right:-30px;
+  width:110px;height:110px;border-radius:50%;
+  background:rgba(200,240,74,.07);
+}
+.kpi-big-label{font-family:var(--fm);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:12px}
+.kpi-big-val{
+  font-family:var(--fh);font-size:48px;font-weight:700;
+  color:var(--lime);line-height:1;margin-bottom:8px;
+  letter-spacing:-.02em;
+}
+.kpi-big-sub{font-size:12px;color:rgba(255,255,255,.35)}
+.kpi-big-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(200,240,74,.15);color:var(--lime);
+  padding:3px 9px;border-radius:5px;font-size:10px;font-weight:600;
+  margin-left:8px;font-family:var(--fm);
+}
+
+.kpi-small{
+  background:#fff;border-radius:14px;
+  border:1.5px solid var(--paper3);
+  padding:20px 20px;
+  animation:slideUp .5s both;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  transition:transform .2s,box-shadow .2s;
+}
+.kpi-small:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.kpi-small-label{font-family:var(--fm);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.kpi-small-val{font-family:var(--fh);font-size:28px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:5px;letter-spacing:-.02em}
+.kpi-small-sub{font-size:11px;color:var(--muted)}
+.kpi-accent{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+
+/* ── CARDS ── */
+.card{
+  background:#fff;
+  border-radius:14px;
+  border:1.5px solid var(--paper3);
+  padding:24px 26px;
+  box-shadow:0 2px 12px rgba(0,0,0,.05);
+  animation:slideUp .5s both;
+}
+.card-dark{background:var(--ink);border-color:var(--ink)}
+
+.ch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.ct{font-family:var(--fh);font-size:18px;font-weight:600;color:var(--ink);letter-spacing:-.02em}
+.card-dark .ct{color:#fff}
+.cs{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--fm)}
+.card-dark .cs{color:rgba(255,255,255,.3)}
+.ctag{
+  font-family:var(--fm);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 10px;border-radius:5px;
+  background:var(--paper);color:var(--muted);border:1px solid var(--paper3);
+}
+.card-dark .ctag{background:rgba(255,255,255,.07);color:rgba(255,255,255,.3);border-color:rgba(255,255,255,.1)}
+
+/* ── GRID LAYOUTS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.g3{display:grid;grid-template-columns:3fr 2fr;gap:18px;margin-bottom:18px}
+.g31{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px}
+.g13{display:grid;grid-template-columns:1fr 2fr;gap:18px;margin-bottom:18px}
+.g1{margin-bottom:18px}
+@media(max-width:960px){.g2,.g3,.g31,.g13{grid-template-columns:1fr}}
+
+canvas{width:100%!important}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.tbl thead th{
+  padding:8px 12px;
+  font-family:var(--fm);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:left;
+  border-bottom:1.5px solid var(--paper3);
+}
+.tbl tbody tr{
+  border-bottom:1px solid var(--paper2);
+  cursor:pointer;transition:background .14s;
+}
+.tbl tbody tr:hover{background:var(--paper)}
+.tbl tbody tr:last-child{border-bottom:none}
+.tbl td{padding:11px 12px;vertical-align:middle}
+.tn{font-weight:600;color:var(--ink)}
+.tr{font-family:var(--fm);font-size:11px;color:var(--muted)}
+.tv{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--rust)}
+
+.pill{
+  display:inline-block;padding:2px 9px;border-radius:20px;
+  font-size:10px;font-family:var(--fm);font-weight:500;
+}
+.pe{background:#e8f0ff;color:#3060c0}
+.pc{background:#f0e8ff;color:#7040a0}
+.pb{background:#fff8e0;color:#a07010}
+.ph{background:#ffe8e8;color:#b03030}
+.ps{background:#e0fff0;color:#207050}
+
+.mini-bar{display:flex;align-items:center;gap:7px}
+.mb-track{flex:1;height:3px;background:var(--paper3);border-radius:2px;min-width:50px}
+.mb-fill{height:100%;border-radius:2px;background:var(--rust);transition:width .6s ease}
+
+/* ── INSIGHT CARDS ── */
+/* deliberately varied sizes — more human */
+.insight-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;margin-bottom:18px}
+@media(max-width:900px){.insight-grid{grid-template-columns:1fr}}
+
+.ins{
+  border-radius:12px;padding:20px 22px;
+  border:1.5px solid var(--paper3);
+  background:#fff;
+  transition:transform .2s,box-shadow .2s;
+  animation:slideUp .5s both;
+}
+.ins:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.ins.featured{background:var(--ink);border-color:var(--ink);grid-row:span 2}
+.ins-num{
+  font-family:var(--fh);font-size:52px;font-weight:700;
+  color:var(--paper3);line-height:1;margin-bottom:12px;
+  letter-spacing:-.04em;
+}
+.ins.featured .ins-num{color:rgba(200,240,74,.15)}
+.ins-title{font-family:var(--fh);font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px;line-height:1.3}
+.ins.featured .ins-title{color:var(--lime)}
+.ins-body{font-size:12px;color:var(--muted);line-height:1.7}
+.ins.featured .ins-body{color:rgba(255,255,255,.45)}
+.ins-action{
+  display:inline-block;margin-top:14px;
+  font-family:var(--fm);font-size:10px;letter-spacing:.08em;
+  color:var(--rust);text-transform:uppercase;
+  padding-bottom:2px;border-bottom:1px solid var(--rust);
+}
+.ins.featured .ins-action{color:var(--lime);border-color:var(--lime)}
+
+/* ── REGION ── */
+.region-rows{display:flex;flex-direction:column;gap:14px}
+.rr{cursor:default}
+.rr-top{display:flex;justify-content:space-between;margin-bottom:5px}
+.rr-name{font-size:13px;font-weight:600;color:var(--ink)}
+.rr-val{font-family:var(--fm);font-size:11px;color:var(--muted)}
+.rr-track{height:6px;background:var(--paper2);border-radius:3px}
+.rr-bar{height:100%;border-radius:3px;transition:width 1s ease}
+
+/* ── VIEWS ── */
+.view{display:none}
+.view.active{display:block}
+
+/* ── TOOLTIP ── */
+.dtip{
+  position:fixed;
+  background:var(--ink);color:#fff;
+  border-radius:10px;padding:14px 18px;
+  pointer-events:none;display:none;z-index:999;
+  min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,.3);
+  border:1px solid rgba(200,240,74,.2);
+}
+.dtip-name{font-family:var(--fh);font-size:16px;color:var(--lime);margin-bottom:8px}
+.dtip-row{display:flex;justify-content:space-between;gap:20px;font-size:11px;color:rgba(255,255,255,.5);margin:3px 0;font-family:var(--fm)}
+.dtip-val{color:#fff;font-weight:500}
+
+/* ── ANIMATIONS ── */
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.kpi-big:nth-child(1){animation-delay:.0s}
+.kpi-small:nth-child(2){animation-delay:.06s}
+.kpi-small:nth-child(3){animation-delay:.12s}
+.kpi-small:nth-child(4){animation-delay:.18s}
+.kpi-small:nth-child(5){animation-delay:.24s}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--paper2)}
+::-webkit-scrollbar-thumb{background:var(--paper3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* ── ANNOUNCEMENT BANNER ── */
+.banner{
+  background:var(--lime);color:var(--ink);
+  padding:10px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;font-weight:600;
+}
+.banner span{font-family:var(--fm);font-size:10px;color:var(--ink2);opacity:.7}
+
+/* ── SUMMARY METRIC ROW (insights tab) ── */
+.metric-row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;margin-bottom:18px;
+}
+.mcard{
+  background:#fff;border:1.5px solid var(--paper3);border-radius:12px;
+  padding:16px 18px;display:flex;align-items:center;gap:14px;
+}
+.mcard-icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.mcard-label{font-family:var(--fm);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.mcard-val{font-family:var(--fh);font-size:22px;color:var(--ink);font-weight:700;letter-spacing:-.02em}
+.mcard-note{font-size:10px;color:var(--muted);margin-top:2px}
+.tag-up{display:inline-block;padding:1px 7px;border-radius:4px;background:#e6fbf0;color:#2a8a4a;font-size:9px;font-family:var(--fm);font-weight:600}
+.tag-dn{display:inline-block;padding:1px 7px;border-radius:4px;background:#fff0f0;color:#c03030;font-size:9px;font-family:var(--fm);font-weight:600}
+.tag-warn{display:inline-block;padding:1px 7px;border-radius:4px;background:#fff8e0;color:#a07010;font-size:9px;font-family:var(--fm);font-weight:600}
+
+/* export dropdown */
+.exp-opt{
+  padding:10px 14px;border-radius:7px;font-size:13px;cursor:pointer;
+  color:var(--text);transition:background .14s;font-family:var(--fb);
+}
+.exp-opt:hover{background:var(--paper)}
+
+/* toast */
+#toast{
+  position:fixed;bottom:32px;right:32px;z-index:9999;
+  background:var(--ink);color:var(--lime);
+  padding:12px 20px;border-radius:10px;
+  font-family:var(--fm);font-size:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+  transform:translateY(80px);opacity:0;
+  transition:all .3s ease;pointer-events:none;
+  border-left:3px solid var(--lime);
+}
+#toast.show{transform:translateY(0);opacity:1}
+
+/* search highlight */
+.srch-highlight{background:#fff3cd;border-radius:2px;padding:0 2px}
+
+/* insight action now clickable */
+.ins-action{cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- TOP ANNOUNCEMENT BANNER -->
+<div class="banner">
+  📊 &nbsp;StorePulse — E-Commerce Analytics Dashboard &nbsp;·&nbsp; FY 2023 Annual Report
+  <span>Built with vanilla JS + Chart.js · No backend · Single file</span>
+</div>
+
+<div class="layout">
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">Store<span>Pulse</span></div>
+    <div class="brand-sub">Analytics v2.1</div>
+  </div>
+
+  <button class="nav-item active" onclick="go('overview',this)">
+    <span class="nav-icon">◈</span> Overview
+  </button>
+  <button class="nav-item" onclick="go('sales',this)">
+    <span class="nav-icon">↗</span> Sales Trends
+  </button>
+  <button class="nav-item" onclick="go('products',this)">
+    <span class="nav-icon">⊞</span> Products
+  </button>
+  <button class="nav-item" onclick="go('customers',this)">
+    <span class="nav-icon">◉</span> Customers
+  </button>
+  <button class="nav-item" onclick="go('insights',this)">
+    <span class="nav-icon">✦</span> Insights
+  </button>
+  <button class="nav-item" onclick="go('limitations',this)">
+    <span class="nav-icon">⚠</span> Limitations
+  </button>
+
+  <div class="sidebar-footer">
+    <div class="live-row"><span class="pulse"></span> Live session</div>
+    2,500 orders processed<br/>
+    311 unique customers<br/>
+    25 products tracked<br/>
+    FY 2023 · All regions
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+<!-- ═══════════════════════════════════════════
+     OVERVIEW
+═══════════════════════════════════════════ -->
+<div id="view-overview" class="view active">
+
+  <div class="topbar">
+    <div>
+      <div class="page-title">Good morning — <em>here's how you did.</em></div>
+      <div class="page-date">📅 Full year · Jan – Dec 2023 · All regions · All categories</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="search-wrap" id="searchWrap">
+        <span style="color:var(--muted);font-size:13px">🔍</span>
+        <input type="text" placeholder="Search products… (Tab to confirm)" oninput="liveSearch(this.value)" onkeydown="searchKeydown(event)" id="srch" autocomplete="off"/>
+        <span id="srchClear" style="cursor:pointer;color:var(--muted);font-size:13px;display:none" onclick="clearSearch()">✕</span>
+      </div>
+      <div style="position:relative">
+        <button class="btn btn-ghost" onclick="showExportMenu(event)">⬇ Export ▾</button>
+        <!-- export dropdown -->
+        <div id="exportMenu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:200;background:#fff;border:1.5px solid var(--paper3);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);padding:6px;min-width:200px;">
+          <div class="exp-opt" onclick="exportData('products')">📦 Products CSV</div>
+          <div class="exp-opt" onclick="exportData('monthly')">📅 Monthly Revenue CSV</div>
+          <div class="exp-opt" onclick="exportData('customers')">👥 Customers CSV</div>
+          <div class="exp-opt" onclick="exportData('all')">🗂 Full Report CSV</div>
+        </div>
+      </div>
+      <button class="btn btn-primary">Share ↗</button>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filter-strip">
+    <span class="fs-label">Category</span>
+    <button class="fc on"  onclick="setCat('all',this)">All</button>
+    <button class="fc" onclick="setCat('Electronics',this)">Electronics</button>
+    <button class="fc" onclick="setCat('Clothing',this)">Clothing</button>
+    <button class="fc" onclick="setCat('Books',this)">Books</button>
+    <button class="fc" onclick="setCat('Home',this)">Home</button>
+    <button class="fc" onclick="setCat('Sports',this)">Sports</button>
+    <div class="fs-sep"></div>
+    <span class="fs-label">Period</span>
+    <button class="fc on" onclick="setPeriod('all',this)">Full Year</button>
+    <button class="fc" onclick="setPeriod('q1',this)">Q1</button>
+    <button class="fc" onclick="setPeriod('q2',this)">Q2</button>
+    <button class="fc" onclick="setPeriod('q3',this)">Q3</button>
+    <button class="fc" onclick="setPeriod('q4',this)">Q4</button>
+  </div>
+
+  <!-- KPIs — asymmetric intentionally -->
+  <div class="kpi-section">
+    <div class="kpi-big" style="animation-delay:.0s">
+      <div class="kpi-big-label">Total Revenue</div>
+      <div class="kpi-big-val" id="kv-rev">$308K</div>
+      <div class="kpi-big-sub">across 2,248 active orders <span class="kpi-big-badge">↑ 12.4%</span></div>
+    </div>
+    <div class="kpi-small" style="animation-delay:.07s">
+      <div class="kpi-small-label"><span class="kpi-accent" style="background:var(--sky)"></span>Orders</div>
+      <div class="kpi-small-val" id="kv-ord">2,248</div>
+      <div class="kpi-small-sub">excl. cancelled ↑ 8.1%</div>
+    </div>
+    <div class="kpi-small" style="animation-delay:.13s">
+      <div class="kpi-small-label"><span class="kpi-accent" style="background:var(--gold)"></span>Avg. Order</div>
+      <div class="kpi-small-val" id="kv-aov">$137</div>
+      <div class="kpi-small-sub">per transaction ↑ 3.9%</div>
+    </div>
+    <div class="kpi-small" style="animation-delay:.19s">
+      <div class="kpi-small-label"><span class="kpi-accent" style="background:var(--violet)"></span>Customers</div>
+      <div class="kpi-small-val" id="kv-cust">311</div>
+      <div class="kpi-small-sub">64.3% came back 🎉</div>
+    </div>
+    <div class="kpi-small" style="animation-delay:.25s">
+      <div class="kpi-small-label"><span class="kpi-accent" style="background:var(--rust)"></span>Cancels</div>
+      <div class="kpi-small-val" id="kv-cancel">5.2%</div>
+      <div class="kpi-small-sub">needs attention ⚠️</div>
+    </div>
+  </div>
+
+  <!-- CHART ROW 1 -->
+  <div class="g3">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">Revenue over time</div><div class="cs">Monthly · hover for exact figures</div></div>
+        <span class="ctag">2023</span>
+      </div>
+      <canvas id="monthlyChart" style="max-height:230px"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">Where's the money?</div><div class="cs">Revenue by category</div></div>
+        <span class="ctag">Split</span>
+      </div>
+      <canvas id="catChart" style="max-height:230px"></canvas>
+    </div>
+  </div>
+
+  <!-- CHART ROW 2 -->
+  <div class="g31">
+    <div class="card">
+      <div class="ch">
+        <div><div class="ct">Products ranked</div><div class="cs" id="prod-sub">Click any row for details</div></div>
+        <span class="ctag" id="prod-count">25 items</span>
+      </div>
+      <div id="srchBanner" style="display:none;background:#fff8e8;border:1.5px solid var(--gold);border-radius:8px;padding:9px 14px;margin-bottom:12px;font-size:12px;color:var(--text);display:none;align-items:center;justify-content:space-between;">
+        <span id="srchMsg"></span>
+        <span onclick="clearSearch()" style="cursor:pointer;font-family:var(--fm);font-size:11px;color:var(--muted);text-decoration:underline">Clear search</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Product</th><th>Cat.</th><th>Revenue</th><th>Units</th><th>Bar</th></tr></thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+        <div id="noResults" style="display:none;text-align:center;padding:32px 16px;color:var(--muted);font-family:var(--fm);font-size:12px;">
+          😕 No products match "<span id="noResultsTerm"></span>" — try a category name or partial product name
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="ch"><div><div class="ct">By region</div><div class="cs">Revenue split</div></div></div>
+        <div class="region-rows" id="regionRows"></div>
+      </div>
+      <div class="card">
+        <div class="ch"><div><div class="ct">Order outcomes</div><div class="cs">All statuses</div></div></div>
+        <canvas id="statusChart" style="max-height:150px"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /overview -->
+
+<!-- ═══════════════════════════════════════════
+     SALES
+═══════════════════════════════════════════ -->
+<div id="view-sales" class="view">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Sales <em>deep dive.</em></div>
+      <div class="page-date">Trends, patterns, and what's driving growth</div>
+    </div>
+  </div>
+
+  <div class="g1 card" style="margin-bottom:18px">
+    <div class="ch">
+      <div><div class="ct">Revenue vs. Orders — monthly</div><div class="cs">Two axes · bars are orders (left), line is revenue (right)</div></div>
+      <span class="ctag">Dual axis</span>
+    </div>
+    <canvas id="dualChart" style="max-height:280px"></canvas>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">When do people order?</div><div class="cs">Orders by day of week · weekends in green</div></div></div>
+      <canvas id="wdChart" style="max-height:220px"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Quarterly performance</div><div class="cs">Revenue per quarter · Q3 was the winner</div></div></div>
+      <canvas id="qChart" style="max-height:220px"></canvas>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Discount impact</div><div class="cs">Revenue by discount tier — discounts drive volume but hurt margin</div></div></div>
+      <canvas id="discChart" style="max-height:210px"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Shipping tiers</div><div class="cs">30% of customers still paid for shipping — opportunity</div></div></div>
+      <canvas id="shipChart" style="max-height:210px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PRODUCTS
+═══════════════════════════════════════════ -->
+<div id="view-products" class="view">
+  <div class="topbar">
+    <div>
+      <div class="page-title">What's <em>selling.</em></div>
+      <div class="page-date">Product-level breakdown · revenue, volume, pricing</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Top 10 products</div><div class="cs">By total revenue — Smartphone is way ahead</div></div></div>
+      <canvas id="top10" style="max-height:290px"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Bottom 5 — review these</div><div class="cs">Near-zero revenue · bundle or discontinue</div></div></div>
+      <canvas id="bot5" style="max-height:290px"></canvas>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Revenue by category</div><div class="cs">Electronics dominates — that's a risk</div></div></div>
+      <canvas id="catBarChart" style="max-height:230px"></canvas>
+    </div>
+    <div class="card card-dark">
+      <div class="ch"><div><div class="ct">Avg unit price</div><div class="cs">Electronics priced 10× higher than others</div></div></div>
+      <canvas id="priceChart" style="max-height:230px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     CUSTOMERS
+═══════════════════════════════════════════ -->
+<div id="view-customers" class="view">
+  <div class="topbar">
+    <div>
+      <div class="page-title">Who's <em>buying.</em></div>
+      <div class="page-date">Customer segments, loyalty, and lifetime value</div>
+    </div>
+  </div>
+
+  <div class="kpi-section" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi-small"><div class="kpi-small-label">Unique Customers</div><div class="kpi-small-val">311</div><div class="kpi-small-sub">placed at least 1 order</div></div>
+    <div class="kpi-small"><div class="kpi-small-label">Repeat Rate</div><div class="kpi-small-val">64.3%</div><div class="kpi-small-sub">200 came back for more 🎉</div></div>
+    <div class="kpi-small"><div class="kpi-small-label">Top Customer LTV</div><div class="kpi-small-val">$38K</div><div class="kpi-small-sub">CUST0155 — VIP for sure</div></div>
+    <div class="kpi-small"><div class="kpi-small-label">Avg. LTV</div><div class="kpi-small-val">$991</div><div class="kpi-small-sub">per customer lifetime</div></div>
+  </div>
+
+  <div class="g31">
+    <div class="card">
+      <div class="ch"><div><div class="ct">Top 10 spenders</div><div class="cs">Lifetime value · CUST0155 is worth protecting</div></div></div>
+      <canvas id="custChart" style="max-height:270px"></canvas>
+    </div>
+    <div class="card">
+      <div class="ch"><div><div class="ct">Repeat vs. new</div><div class="cs">64% loyalty is solid — not amazing</div></div></div>
+      <canvas id="segChart" style="max-height:270px"></canvas>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div><div class="ct">How much do they spend?</div><div class="cs">Customer LTV distribution — right-skewed as expected</div></div></div>
+      <canvas id="ltvChart" style="max-height:230px"></canvas>
+    </div>
+    <div class="card card-dark">
+      <div class="ch"><div><div class="ct">How often do they order?</div><div class="cs">Purchase frequency · 35% bought only once</div></div></div>
+      <canvas id="freqChart" style="max-height:230px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     INSIGHTS
+═══════════════════════════════════════════ -->
+<div id="view-insights" class="view">
+  <div class="topbar">
+    <div>
+      <div class="page-title">What to <em>do next.</em></div>
+      <div class="page-date">7 findings · ranked by impact · not just observations — actions</div>
+    </div>
+  </div>
+
+  <!-- quick metric row -->
+  <div class="metric-row">
+    <div class="mcard"><div class="mcard-icon" style="background:#e8f8ee">💰</div><div><div class="mcard-label">Revenue vs Target</div><div class="mcard-val">$308K</div><div class="mcard-note"><span class="tag-up">✓ +14.1%</span> vs $270K target</div></div></div>
+    <div class="mcard"><div class="mcard-icon" style="background:#fff0f0">🛒</div><div><div class="mcard-label">AOV vs Target</div><div class="mcard-val">$137</div><div class="mcard-note"><span class="tag-dn">↓ $13 short</span> of $150 target</div></div></div>
+    <div class="mcard"><div class="mcard-icon" style="background:#fff8e0">⚠️</div><div><div class="mcard-label">Cancel Rate</div><div class="mcard-val">5.2%</div><div class="mcard-note"><span class="tag-warn">⚠ above</span> 4% threshold</div></div></div>
+    <div class="mcard"><div class="mcard-icon" style="background:#eef4ff">🔁</div><div><div class="mcard-label">Repeat Rate</div><div class="mcard-val">64.3%</div><div class="mcard-note"><span class="tag-up">✓ above</span> 60% benchmark</div></div></div>
+    <div class="mcard"><div class="mcard-icon" style="background:#fff0ff">📦</div><div><div class="mcard-label">Top Cat. Share</div><div class="mcard-val">57.9%</div><div class="mcard-note"><span class="tag-warn">⚠ high</span> concentration risk</div></div></div>
+  </div>
+
+  <!-- insight cards — asymmetric grid, human feel -->
+  <div class="insight-grid">
+    <!-- featured tall card -->
+    <div class="ins featured">
+      <div class="ins-num">01</div>
+      <div class="ins-title">Your biggest risk isn't a competitor — it's Electronics.</div>
+      <div class="ins-body">Electronics brings in $178K (58% of total). That's great until a supply disruption, a price war, or a viral review tanks it. You need Clothing at 30%+ and Sports needs an emergency promotion. Right now Sports = $1,138. That's not a category — that's a rounding error.</div>
+      <span class="ins-action" onclick="goInsight('products')">→ Fix category concentration</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">02</div>
+      <div class="ins-title">111 customers bought once and disappeared.</div>
+      <div class="ins-body">A post-purchase email sequence with a 10% second-order coupon could realistically recover 25–30 of them. At $137 AOV that's $3,400–4,100 in recaptured revenue — essentially free money sitting in your database.</div>
+      <span class="ins-action" onclick="goInsight('customers')">→ Launch win-back campaign</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">03</div>
+      <div class="ins-title">Three customers = nearly a third of your revenue.</div>
+      <div class="ins-body">CUST0155, CUST0065, CUST0203 together spent ~$98K. If one of them leaves, that's a 32% revenue cliff. They need VIP treatment — not a newsletter.</div>
+      <span class="ins-action" onclick="goInsight('customers')">→ Build VIP tier now</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">04</div>
+      <div class="ins-title">Gym Bag sold 1 unit. One.</div>
+      <div class="ins-body">Gym Bag ($57), Plant Pot ($87), Comic Book ($251) are all near-dead. Bundle them with top sellers or remove them. Dead inventory has a real carrying cost most stores ignore.</div>
+      <span class="ins-action" onclick="goInsight('products')">→ Audit dead stock</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">05</div>
+      <div class="ins-title">You're leaving $12K on the table at checkout.</div>
+      <div class="ins-body">AOV is $137 but your target is $150. A "Frequently Bought Together" widget hitting 30% of orders at a $15 upsell = ~$12,000/year. Not a big engineering project — a one-week feature.</div>
+      <span class="ins-action" onclick="goInsight('overview')">→ Implement cross-sell</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">06</div>
+      <div class="ins-title">Stock up in July. August will thank you.</div>
+      <div class="ins-body">August is your peak month at $34.1K — 56% above February's low of $19.8K. If you're not pre-stocking in mid-July and running early-bird promotions by July 20, you're missing demand you already know is coming.</div>
+      <span class="ins-action" onclick="goInsight('sales')">→ Plan inventory calendar</span>
+    </div>
+
+    <div class="ins">
+      <div class="ins-num">07</div>
+      <div class="ins-title">Free shipping at $150 is a clever trick.</div>
+      <div class="ins-body">30% of orders paid $12.99 shipping. Set a free shipping threshold at $150 (just $13 above AOV). Customers instinctively add items to hit thresholds — it's one of the highest-ROI levers in e-commerce.</div>
+      <span class="ins-action" onclick="goInsight('sales')">→ Set free shipping threshold</span>
+    </div>
+  </div>
+
+  <!-- full benchmark table -->
+  <div class="card">
+    <div class="ch"><div><div class="ct">Metrics vs. benchmarks</div><div class="cs">How does this business actually stack up?</div></div></div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr><th>Metric</th><th>Actual</th><th>Target / Benchmark</th><th>Gap</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="tn">Total Revenue</td><td class="tv">$308,046</td><td class="tr">$270,000</td><td class="tr">+$38K</td><td><span class="tag-up">✓ Exceeded</span></td></tr>
+          <tr><td class="tn">Total Orders</td><td class="tv">2,248</td><td class="tr">2,000</td><td class="tr">+248</td><td><span class="tag-up">✓ Exceeded</span></td></tr>
+          <tr><td class="tn">Avg. Order Value</td><td class="tv">$137.03</td><td class="tr">$150.00</td><td class="tr">−$12.97</td><td><span class="tag-dn">↓ Below</span></td></tr>
+          <tr><td class="tn">Repeat Customer Rate</td><td class="tv">64.3%</td><td class="tr">60%</td><td class="tr">+4.3pp</td><td><span class="tag-up">✓ Exceeded</span></td></tr>
+          <tr><td class="tn">Cancellation Rate</td><td class="tv">5.2%</td><td class="tr">&lt; 4.0%</td><td class="tr">+1.2pp</td><td><span class="tag-dn">↑ Above limit</span></td></tr>
+          <tr><td class="tn">Electronics Revenue Share</td><td class="tv">57.9%</td><td class="tr">&lt; 50%</td><td class="tr">+7.9pp</td><td><span class="tag-warn">⚠ High</span></td></tr>
+          <tr><td class="tn">Sports Revenue Share</td><td class="tv">0.37%</td><td class="tr">5%+</td><td class="tr">−4.63pp</td><td><span class="tag-dn">↓ Critical</span></td></tr>
+          <tr><td class="tn">Unique Customers</td><td class="tv">311</td><td class="tr">300</td><td class="tr">+11</td><td><span class="tag-up">✓ Exceeded</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LIMITATIONS
+═══════════════════════════════════════════ -->
+<div id="view-limitations" class="view">
+
+  <div class="topbar">
+    <div>
+      <div class="page-title">Known <em>limitations.</em></div>
+      <div class="page-date">Honest about what this project can't do — and what comes next</div>
+    </div>
+  </div>
+
+  <!-- personal note -->
+  <div style="background:#fffbea;border:1.5px solid var(--gold);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px;">
+    <div style="font-size:22px;flex-shrink:0">📝</div>
+    <div>
+      <div style="font-family:var(--fh);font-size:15px;color:var(--ink);margin-bottom:4px;letter-spacing:-.01em">A note from the developer</div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75">
+        I'm fully aware of these limitations — this is version 1.0 of StorePulse, built as a portfolio project to demonstrate end-to-end data analysis and dashboard development. 
+        The data is synthetic, the dashboard is desktop-only, and there's no live backend yet. 
+        <strong style="color:var(--ink)">I plan to fix all of these in the next version</strong> — starting with connecting real data, adding mobile support, and building a forecasting layer. 
+        This page exists because I believe in being transparent about what a project can and can't do.
+      </div>
+    </div>
+  </div>
+
+  <!-- honest intro banner -->
+  <div style="background:var(--ink);border-radius:14px;padding:24px 28px;margin-bottom:24px;display:flex;align-items:flex-start;gap:20px;">
+    <div style="font-size:32px;flex-shrink:0">🛠</div>
+    <div>
+      <div style="font-family:var(--fh);font-size:20px;color:#fff;margin-bottom:6px;letter-spacing:-.02em">Why show limitations?</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.45);line-height:1.8;max-width:700px">
+        Most dashboards pretend to be perfect. This one doesn't. Knowing what a tool <em style="color:rgba(255,255,255,.65)">can't</em> do is just as important as knowing what it can. These are the real gaps — and honest next steps to fix each one.
+      </div>
+    </div>
+  </div>
+
+  <!-- limitation cards grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+
+    <!-- L1 — Static Data -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid var(--rust)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#fff0ed;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">🗄️</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">Data is hardcoded — not live</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--rust);letter-spacing:.1em;text-transform:uppercase;margin-top:2px">High Priority</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        All 2,500 orders are embedded directly inside this HTML file. In a real product, the dashboard would connect to a live database (PostgreSQL, Firebase) or pull from an API every hour. Right now, if the data changes — someone has to manually edit the code.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Connect to a Google Sheets API or a REST backend. That way the dashboard refreshes automatically whenever new orders come in.
+      </div>
+    </div>
+
+    <!-- L2 — Synthetic Data -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid var(--gold)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#fff8e0;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">🎲</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">Dataset is synthetic, not real</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-top:2px">Medium Priority</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        The 2,500 orders were generated using Python with realistic patterns — seasonal peaks, skewed customers, random discounts. But real data is messier: duplicate customers with different spellings, missing zip codes, currency mismatches, refund edge cases. The cleaning pipeline here is simpler than what real data demands.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Upload a real CSV from Shopify, WooCommerce, or Amazon Seller Central and re-run the full Python cleaning + analysis pipeline.
+      </div>
+    </div>
+
+    <!-- L3 — No Mobile -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid var(--sky)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#e8f6ff;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">📱</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">Not mobile friendly</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--sky);letter-spacing:.1em;text-transform:uppercase;margin-top:2px">Medium Priority</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        The sidebar, chart grids, and table layouts are built for desktop screens (1200px+). On a phone or tablet, the sidebar collapses awkwardly, charts become too small to read, and the filter bar wraps badly. A business owner checking numbers on their phone would have a frustrating experience.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Add a hamburger menu for mobile, stack cards to single column below 768px, and increase chart touch targets for finger navigation.
+      </div>
+    </div>
+
+    <!-- L4 — No Auth -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid var(--violet)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#f5eeff;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">🔐</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">No login or authentication</div>
+          <div style="font-family:var(--fm);font-size:9px;color:var(--violet);letter-spacing:.1em;text-transform:uppercase;margin-top:2px">Medium Priority</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        Anyone with the GitHub Pages URL can view the full dashboard — all revenue figures, customer IDs, and business data. For a demo project this is fine, but for a real business with sensitive financial data, you'd need authentication (login page, session tokens, role-based access) before deploying publicly.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Add password protection via Netlify Identity or move to a backend framework (Flask, Node.js) with session-based auth.
+      </div>
+    </div>
+
+    <!-- L5 — No Forecasting -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid #52b788">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#e8f8ee;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">🔮</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">No predictive analytics</div>
+          <div style="font-family:var(--fm);font-size:9px;color:#52b788;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">Future Feature</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        This dashboard shows what <em>happened</em> — it doesn't predict what <em>will</em> happen. There's no revenue forecasting, no churn prediction, no "if we run a 15% discount next month, here's the expected impact." That kind of forward-looking analysis requires ML models (linear regression, Prophet, XGBoost) on top of the existing data pipeline.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Use Facebook Prophet or scikit-learn to add a "Forecast" tab showing next 3 months projected revenue with confidence intervals.
+      </div>
+    </div>
+
+    <!-- L6 — Export only CSV -->
+    <div style="background:#fff;border:1.5px solid var(--paper3);border-radius:14px;padding:22px 24px;border-top:3px solid #f4a261">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="background:#fff3e0;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-size:18px;flex-shrink:0">📤</div>
+        <div>
+          <div style="font-family:var(--fh);font-size:16px;color:var(--ink);letter-spacing:-.01em">Export limited to CSV only</div>
+          <div style="font-family:var(--fm);font-size:9px;color:#f4a261;letter-spacing:.1em;text-transform:uppercase;margin-top:2px">Future Feature</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        Right now export downloads a CSV file — useful, but limited. A real analytics tool would also export a formatted PDF report with charts included, push data to Google Sheets automatically, or email a weekly summary to stakeholders. The share button currently does nothing.
+      </div>
+      <div style="background:var(--paper);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--text)">
+        <strong style="font-family:var(--fm);font-size:10px;color:var(--ink);letter-spacing:.06em">NEXT STEP →</strong><br/>
+        Use jsPDF + html2canvas to export the dashboard as a PDF. Add a scheduled email report via a simple Node.js cron job.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- roadmap card -->
+  <div style="background:var(--ink);border-radius:14px;padding:26px 28px;">
+    <div style="font-family:var(--fh);font-size:22px;color:#fff;letter-spacing:-.02em;margin-bottom:6px">What version 2.0 would look like</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.35);font-family:var(--fm);margin-bottom:22px">If this were a real product — not a portfolio project</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:16px">
+        <div style="font-size:18px;margin-bottom:8px">🔌</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Live Data Pipeline</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">Shopify API → Python ETL → PostgreSQL → Dashboard auto-refresh every hour</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:16px">
+        <div style="font-size:18px;margin-bottom:8px">📱</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Mobile App</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">React Native dashboard with push notifications for daily revenue summary</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:16px">
+        <div style="font-size:18px;margin-bottom:8px">🔮</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Forecasting Engine</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">Prophet model predicting next 90 days revenue with upper/lower confidence bands</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:16px">
+        <div style="font-size:18px;margin-bottom:8px">🔐</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Multi-user Auth</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">Role-based access — CEO sees all, warehouse manager sees inventory only</div>
+      </div>
+      <div style="background:rgba(255,255,255,.05);border-radius:10px;padding:16px">
+        <div style="font-size:18px;margin-bottom:8px">📧</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:#fff;margin-bottom:4px">Scheduled Reports</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">Auto-email PDF report every Monday 8am with week-over-week comparison</div>
+      </div>
+      <div style="background:rgba(rgba(200,240,74,.12));border-radius:10px;padding:16px;border:1px solid rgba(200,240,74,.2)">
+        <div style="font-size:18px;margin-bottom:8px">🌍</div>
+        <div style="font-family:var(--fb);font-size:13px;font-weight:600;color:var(--lime);margin-bottom:4px">Multi-currency + i18n</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.6">Support USD, EUR, GBP, INR with real-time forex conversion and language toggle</div>
+      </div>
+    </div>
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--fm);font-size:11px;color:rgba(255,255,255,.25)">
+      StorePulse v2.0 · Estimated build time with a team of 2: ~3 months · Solo: ~6 months
+    </div>
+  </div>
+
+</div><!-- /limitations -->
+
+</main>
+</div><!-- /layout -->
+
+<!-- Drill tooltip -->
+<div class="dtip" id="dtip">
+  <div class="dtip-name" id="dt-n"></div>
+  <div class="dtip-row"><span>Revenue</span><span class="dtip-val" id="dt-r"></span></div>
+  <div class="dtip-row"><span>Units sold</span><span class="dtip-val" id="dt-u"></span></div>
+  <div class="dtip-row"><span>Avg price</span><span class="dtip-val" id="dt-p"></span></div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast">✓ &nbsp;<span id="toastMsg">Exported!</span></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────
+const D = {
+  months:  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  revenue: [22400,19800,24100,21500,26300,28700,30200,34100,27800,25600,23900,29600],
+  orders:  [155,138,167,149,182,198,209,236,192,177,165,205],
+  cats:{
+    labels: ['Electronics','Clothing','Books','Home & Garden','Sports'],
+    revenue:[178561,69789,44199,14360,1138],
+    avgPrice:[650,70,31,44,47],
+    colors:  ['#4ab8f0','#9b72cf','#f4b942','#e85d38','#c8f04a'],
+  },
+  products:[
+    {n:'Smartphone',     c:'Electronics',   cls:'pe',rev:101063,u:123, p:850},
+    {n:'Smartwatch',     c:'Electronics',   cls:'pe',rev:49125, u:169, p:300},
+    {n:'Jeans',          c:'Clothing',      cls:'pc',rev:30851, u:499, p:60},
+    {n:'Sneakers',       c:'Clothing',      cls:'pc',rev:27128, u:296, p:90},
+    {n:'Headphones',     c:'Electronics',   cls:'pe',rev:20152, u:134, p:150},
+    {n:'Textbook',       c:'Books',         cls:'pb',rev:16655, u:210, p:75},
+    {n:'Cookbook',       c:'Books',         cls:'pb',rev:15510, u:498, p:30},
+    {n:'Hoodie',         c:'Clothing',      cls:'pc',rev:10116, u:176, p:55},
+    {n:'Coffee Maker',   c:'Home & Garden', cls:'ph',rev:9938,  u:119, p:80},
+    {n:'Self-Help Book', c:'Books',         cls:'pb',rev:9369,  u:409, p:22},
+    {n:'Tablet',         c:'Electronics',   cls:'pe',rev:7210,  u:16,  p:450},
+    {n:'Jacket',         c:'Clothing',      cls:'pc',rev:6982,  u:55,  p:120},
+    {n:'Fiction Novel',  c:'Books',         cls:'pb',rev:3165,  u:167, p:18},
+    {n:'Blender',        c:'Home & Garden', cls:'ph',rev:2741,  u:42,  p:65},
+    {n:'Desk Lamp',      c:'Home & Garden', cls:'ph',rev:1282,  u:32,  p:40},
+    {n:'Laptop',         c:'Electronics',   cls:'pe',rev:1138,  u:1,   p:1200},
+    {n:'Throw Pillow',   c:'Home & Garden', cls:'ph',rev:399,   u:20,  p:20},
+    {n:'Yoga Mat',       c:'Sports',        cls:'ps',rev:420,   u:12,  p:35},
+    {n:'Water Bottle',   c:'Sports',        cls:'ps',rev:407,   u:20,  p:20},
+    {n:'Resistance Bands',c:'Sports',       cls:'ps',rev:423,   u:15,  p:25},
+    {n:'T-Shirt',        c:'Clothing',      cls:'pc',rev:490,   u:19,  p:25},
+    {n:'Running Shoes',  c:'Sports',        cls:'ps',rev:253,   u:2,   p:110},
+    {n:'Comic Book',     c:'Books',         cls:'pb',rev:251,   u:17,  p:12},
+    {n:'Plant Pot',      c:'Home & Garden', cls:'ph',rev:87,    u:6,   p:15},
+    {n:'Gym Bag',        c:'Sports',        cls:'ps',rev:57,    u:1,   p:45},
+  ],
+  customers:{
+    ids:    ['CUST0155','CUST0065','CUST0203','CUST0379','CUST0190','CUST0095','CUST0184','CUST0058','CUST0055','CUST0146'],
+    rev:    [38448,29846,28650,21868,14335,11520,6074,6052,5330,4907],
+  },
+  regions:{
+    North:{rev:78600,ord:582,color:'#4ab8f0'},
+    South:{rev:80200,ord:561,color:'#c8f04a'},
+    East: {rev:75100,ord:553,color:'#f4b942'},
+    West: {rev:74146,ord:552,color:'#9b72cf'},
+  },
+  status:{
+    labels:['Delivered','Shipped','Returned','Cancelled'],
+    counts:[1799,299,102,98],
+    colors:['#c8f04a','#4ab8f0','#f4b942','#e85d38'],
+  },
+  weekday:{
+    labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    orders:[332,318,341,307,359,298,293],
+  },
+};
+
+// ── CHART SETUP ──────────────────────────────────────
+Chart.defaults.color='#7a7060';
+Chart.defaults.font.family="'DM Sans',sans-serif";
+Chart.defaults.font.size=11;
+
+const GRID={color:'rgba(26,26,46,.06)',drawBorder:false};
+const GRID_D={color:'rgba(255,255,255,.06)',drawBorder:false};
+const TT={
+  backgroundColor:'#1a1a2e',borderColor:'rgba(200,240,74,.2)',borderWidth:1,
+  titleFont:{family:"'Fraunces',serif",size:14},
+  bodyFont:{family:"'Fira Code',monospace",size:11},
+  padding:12,cornerRadius:8,
+};
+
+const C={}; // chart registry
+function mk(id,type,data,opts){
+  const el=document.getElementById(id);if(!el)return;
+  if(C[id])C[id].destroy();
+  C[id]=new Chart(el,{type,data,options:{responsive:true,plugins:{legend:{display:false},tooltip:TT},...opts}});
+}
+const $ = id => document.getElementById(id);
+
+// ── STATE ────────────────────────────────────────────
+let cat='all', period='all';
+const periodSlice={all:[0,12],q1:[0,3],q2:[3,6],q3:[6,9],q4:[9,12]};
+
+// ── MONTHLY CHART ─────────────────────────────────────
+function buildMonthly(){
+  const [s,e]=periodSlice[period];
+  const labels=D.months.slice(s,e);
+  const rev=D.revenue.slice(s,e);
+  const maxIdx=rev.indexOf(Math.max(...rev));
+  mk('monthlyChart','bar',
+    {labels,datasets:[{
+      data:rev,
+      backgroundColor:rev.map((_,i)=>i===maxIdx?'#e85d38':'rgba(26,26,46,.12)'),
+      borderColor:rev.map((_,i)=>i===maxIdx?'#e85d38':'rgba(26,26,46,.25)'),
+      borderWidth:1.5,borderRadius:8,borderSkipped:false,
+      hoverBackgroundColor:'rgba(26,26,46,.25)',
+    }]},
+    {scales:{
+      x:{grid:{display:false},border:{display:false}},
+      y:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}},
+    },plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}}}
+  );
+}
+
+// ── CATEGORY DONUT ───────────────────────────────────
+function buildCat(){
+  mk('catChart','doughnut',
+    {labels:D.cats.labels,datasets:[{
+      data:D.cats.revenue,
+      backgroundColor:D.cats.colors.map(c=>c+'cc'),
+      borderColor:'#fff',borderWidth:3,hoverOffset:6,
+    }]},
+    {cutout:'62%',plugins:{
+      legend:{display:true,position:'bottom',labels:{padding:12,usePointStyle:true,pointStyleWidth:9,font:{size:11}}},
+      tooltip:{...TT,callbacks:{label:ctx=>` $${ctx.parsed.toLocaleString()} · ${((ctx.parsed/308046)*100).toFixed(1)}%`}},
+    }}
+  );
+}
+
+// ── PRODUCT TABLE ─────────────────────────────────────
+function buildTable(){
+  let prods=[...D.products];
+  if(cat!=='all') prods=prods.filter(p=>p.c===cat||p.c.startsWith(cat));
+  prods.sort((a,b)=>b.rev-a.rev);
+  const maxRev=prods[0]?.rev||1;
+  $('prod-count').textContent=prods.length+' items';
+  const tb=$('prodBody'); tb.innerHTML='';
+  prods.forEach((p,i)=>{
+    const pct=((p.rev/maxRev)*100).toFixed(0);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="tr">${String(i+1).padStart(2,'0')}</td>
+      <td class="tn">${p.n}</td>
+      <td><span class="pill ${p.cls}">${p.c}</span></td>
+      <td class="tv">$${p.rev.toLocaleString()}</td>
+      <td class="tr">${p.u.toLocaleString()}</td>
+      <td><div class="mini-bar"><div class="mb-track"><div class="mb-fill" style="width:${pct}%"></div></div><span class="tr">${pct}%</span></div></td>`;
+    tr.onclick=()=>showDrill(p);
+    tb.appendChild(tr);
+  });
+}
+
+// ── DRILL ─────────────────────────────────────────────
+function showDrill(p){
+  $('dt-n').textContent=p.n;
+  $('dt-r').textContent='$'+p.rev.toLocaleString();
+  $('dt-u').textContent=p.u+' units';
+  $('dt-p').textContent='$'+p.p+' avg';
+  const tip=$('dtip');
+  tip.style.display='block';
+  tip.style.left='50%';tip.style.top='45%';
+  setTimeout(()=>tip.style.display='none',3200);
+}
+
+// ── REGIONS ───────────────────────────────────────────
+function buildRegions(){
+  const el=$('regionRows'); if(!el)return;
+  el.innerHTML='';
+  const maxRev=Math.max(...Object.values(D.regions).map(r=>r.rev));
+  Object.entries(D.regions).forEach(([name,r])=>{
+    const pct=((r.rev/maxRev)*100).toFixed(0);
+    el.innerHTML+=`<div class="rr">
+      <div class="rr-top"><span class="rr-name">${name}</span><span class="rr-val">$${(r.rev/1000).toFixed(1)}K · ${r.ord} orders</span></div>
+      <div class="rr-track"><div class="rr-bar" style="width:${pct}%;background:${r.color}"></div></div>
+    </div>`;
+  });
+}
+
+// ── STATUS ────────────────────────────────────────────
+function buildStatus(){
+  mk('statusChart','doughnut',
+    {labels:D.status.labels,datasets:[{
+      data:D.status.counts,
+      backgroundColor:D.status.colors.map(c=>c+'aa'),
+      borderColor:D.status.colors,borderWidth:2,hoverOffset:5,
+    }]},
+    {cutout:'52%',plugins:{
+      legend:{display:true,position:'right',labels:{padding:10,usePointStyle:true,pointStyleWidth:8,font:{size:10}}},
+      tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed} · ${((ctx.parsed/2298)*100).toFixed(1)}%`}},
+    }}
+  );
+}
+
+// ── DUAL CHART ────────────────────────────────────────
+function buildDual(){
+  mk('dualChart','bar',{labels:D.months,datasets:[
+    {label:'Orders',data:D.orders,backgroundColor:'rgba(26,26,46,.1)',borderColor:'rgba(26,26,46,.3)',borderWidth:1.5,borderRadius:5,yAxisID:'y1'},
+    {label:'Revenue',data:D.revenue,type:'line',borderColor:'#e85d38',backgroundColor:'transparent',borderWidth:2.5,tension:.4,pointRadius:5,pointBackgroundColor:'#e85d38',yAxisID:'y2'},
+  ]},{
+    plugins:{legend:{display:true,labels:{usePointStyle:true}},tooltip:{...TT}},
+    scales:{
+      x:{grid:{display:false},border:{display:false}},
+      y1:{grid:GRID,border:{display:false},position:'left'},
+      y2:{grid:{display:false},border:{display:false},position:'right',ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}},
+    }
+  });
+}
+
+// ── WEEKDAY ───────────────────────────────────────────
+function buildWD(){
+  mk('wdChart','bar',{labels:D.weekday.labels,datasets:[{
+    data:D.weekday.orders,
+    backgroundColor:D.weekday.labels.map(d=>['Sat','Sun'].includes(d)?'#c8f04a88':'rgba(26,26,46,.1)'),
+    borderColor:D.weekday.labels.map(d=>['Sat','Sun'].includes(d)?'#c8f04a':'rgba(26,26,46,.3)'),
+    borderWidth:1.5,borderRadius:6,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID,border:{display:false}}}});
+}
+
+// ── QUARTERLY ─────────────────────────────────────────
+function buildQ(){
+  mk('qChart','bar',{labels:['Q1','Q2','Q3','Q4'],datasets:[{
+    data:[66300,76500,91900,79000],
+    backgroundColor:['rgba(26,26,46,.1)','rgba(26,26,46,.1)','#e85d38aa','rgba(26,26,46,.1)'],
+    borderColor:['rgba(26,26,46,.3)','rgba(26,26,46,.3)','#e85d38','rgba(26,26,46,.3)'],
+    borderWidth:1.5,borderRadius:8,borderSkipped:false,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}}});
+}
+
+// ── DISCOUNT ──────────────────────────────────────────
+function buildDisc(){
+  mk('discChart','bar',{labels:['No discount','5% off','10% off','15% off','20% off'],datasets:[{
+    data:[135800,38200,56400,42100,35546],
+    backgroundColor:['#c8f04a88','rgba(26,26,46,.08)','rgba(26,26,46,.08)','rgba(26,26,46,.08)','rgba(26,26,46,.08)'],
+    borderColor:['#c8f04a','rgba(26,26,46,.2)','rgba(26,26,46,.2)','rgba(26,26,46,.2)','rgba(26,26,46,.2)'],
+    borderWidth:1.5,borderRadius:6,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}}});
+}
+
+// ── SHIPPING ──────────────────────────────────────────
+function buildShip(){
+  mk('shipChart','doughnut',{labels:['Free shipping','$4.99','$7.99','$12.99'],datasets:[{
+    data:[750,750,625,375],
+    backgroundColor:['#c8f04aaa','#4ab8f0aa','#f4b942aa','#e85d38aa'],
+    borderColor:'#f0ebe3',borderWidth:3,hoverOffset:5,
+  }]},{cutout:'55%',plugins:{
+    legend:{display:true,position:'bottom',labels:{padding:10,usePointStyle:true,font:{size:11}}},
+    tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed} orders`}},
+  }});
+}
+
+// ── TOP10 / BOT5 ──────────────────────────────────────
+function buildTop10(){
+  const top=D.products.slice(0,10);
+  mk('top10','bar',{labels:top.map(p=>p.n),datasets:[{
+    data:top.map(p=>p.rev),
+    backgroundColor:top.map((_,i)=>i===0?'#e85d38aa':'rgba(26,26,46,.1)'),
+    borderColor:top.map((_,i)=>i===0?'#e85d38':'rgba(26,26,46,.25)'),
+    borderWidth:1.5,borderRadius:5,borderSkipped:false,
+  }]},{indexAxis:'y',scales:{x:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}},y:{grid:{display:false},border:{display:false}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.x.toLocaleString()}}}});
+}
+function buildBot5(){
+  const bot=D.products.slice(-5).reverse();
+  mk('bot5','bar',{labels:bot.map(p=>p.n),datasets:[{
+    data:bot.map(p=>p.rev),
+    backgroundColor:'rgba(232,93,56,.15)',borderColor:'#e85d38',borderWidth:1.5,borderRadius:5,borderSkipped:false,
+  }]},{indexAxis:'y',scales:{x:{grid:GRID,border:{display:false}},y:{grid:{display:false},border:{display:false}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.x.toLocaleString()}}}});
+}
+function buildCatBar(){
+  mk('catBarChart','bar',{labels:D.cats.labels,datasets:[{
+    data:D.cats.revenue,
+    backgroundColor:D.cats.colors.map(c=>c+'aa'),
+    borderColor:D.cats.colors,borderWidth:1.5,borderRadius:7,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}}});
+}
+function buildPrice(){
+  mk('priceChart','bar',{labels:D.cats.labels,datasets:[{
+    data:D.cats.avgPrice,
+    backgroundColor:D.cats.colors.map(c=>c+'55'),
+    borderColor:D.cats.colors,borderWidth:1.5,borderRadius:7,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID_D,border:{display:false},ticks:{color:'rgba(255,255,255,.35)',callback:v=>'$'+v}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.y+' avg'}}}});
+}
+
+// ── CUSTOMERS ─────────────────────────────────────────
+function buildCustomers(){
+  mk('custChart','bar',{labels:D.customers.ids,datasets:[{
+    data:D.customers.rev,
+    backgroundColor:D.customers.rev.map((_,i)=>i===0?'#e85d38aa':'rgba(26,26,46,.1)'),
+    borderColor:D.customers.rev.map((_,i)=>i===0?'#e85d38':'rgba(26,26,46,.25)'),
+    borderWidth:1.5,borderRadius:5,borderSkipped:false,
+  }]},{indexAxis:'y',scales:{x:{grid:GRID,border:{display:false},ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'K'}},y:{grid:{display:false},border:{display:false},ticks:{font:{size:10}}}},plugins:{tooltip:{...TT,callbacks:{label:ctx=>' $'+ctx.parsed.x.toLocaleString()}}}});
+
+  mk('segChart','doughnut',{labels:['Came back ♻️','Bought once'],datasets:[{
+    data:[200,111],
+    backgroundColor:['#c8f04aaa','rgba(26,26,46,.15)'],
+    borderColor:['#c8f04a','rgba(26,26,46,.3)'],borderWidth:2,hoverOffset:6,
+  }]},{cutout:'58%',plugins:{
+    legend:{display:true,position:'bottom',labels:{padding:12,usePointStyle:true,font:{size:12}}},
+    tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed} customers`}},
+  }});
+
+  mk('ltvChart','bar',{labels:['<$100','$100–200','$200–400','$400–700','$700–1K','$1–2K','$2–3K','$3–5K','$5–10K','$10K+'],datasets:[{
+    data:[2,8,24,51,72,68,43,24,12,7],
+    backgroundColor:'rgba(26,26,46,.1)',borderColor:'rgba(26,26,46,.3)',borderWidth:1.5,borderRadius:5,
+  }]},{scales:{x:{grid:{display:false},border:{display:false},ticks:{maxRotation:35,font:{size:9}}},y:{grid:GRID,border:{display:false}}},plugins:{tooltip:{...TT}}});
+
+  mk('freqChart','bar',{labels:['1 order','2 orders','3 orders','4 orders','5 orders','6–10','11+'],datasets:[{
+    data:[111,62,48,34,22,21,13],
+    backgroundColor:D.cats.colors.map(c=>c+'88').slice(0,7),
+    borderRadius:5,borderSkipped:false,
+  }]},{scales:{x:{grid:{display:false},border:{display:false}},y:{grid:GRID_D,border:{display:false},ticks:{color:'rgba(255,255,255,.35)'}}},plugins:{tooltip:{...TT}}});
+}
+
+// ── FILTER HANDLERS ───────────────────────────────────
+function setCat(v,btn){
+  cat=v;
+  document.querySelectorAll('.filter-strip .fc').forEach(b=>{
+    if(['All','Electronics','Clothing','Books','Home','Sports'].includes(b.textContent)) b.classList.remove('on');
+  });
+  btn.classList.add('on');
+  buildTable();
+  // update KPIs
+  const fp=D.products.filter(p=>v==='all'||p.c===v||p.c.startsWith(v));
+  const rev=fp.reduce((s,p)=>s+p.rev,0);
+  const ord=fp.reduce((s,p)=>s+p.u,0);
+  $('kv-rev').textContent='$'+(rev/1000).toFixed(0)+'K';
+  $('kv-ord').textContent=ord.toLocaleString();
+  $('kv-aov').textContent='$'+(ord?Math.round(rev/ord):0);
+}
+function setPeriod(v,btn){
+  period=v;
+  document.querySelectorAll('.filter-strip .fc').forEach(b=>{
+    if(['Full Year','Q1','Q2','Q3','Q4'].includes(b.textContent)) b.classList.remove('on');
+  });
+  btn.classList.add('on');
+  buildMonthly();
+}
+
+// ── SEARCH — Tab to confirm, highlight, no-results state ──
+let searchQuery = '';
+
+function liveSearch(q) {
+  searchQuery = q.trim();
+  const lo = searchQuery.toLowerCase();
+  const clear = $('srchClear');
+  const banner = $('srchBanner');
+  const noRes = $('noResults');
+
+  // show/hide clear button
+  clear.style.display = q.length ? 'inline' : 'none';
+
+  if (!lo) {
+    // reset — show all
+    banner.style.display = 'none';
+    noRes.style.display = 'none';
+    buildTable();
+    return;
+  }
+
+  // navigate to overview so table is visible
+  const overviewBtn = document.querySelector('.nav-item');
+  if (!$('view-overview').classList.contains('active')) {
+    go('overview', overviewBtn);
+  }
+
+  // filter and highlight
+  let visible = 0;
+  document.querySelectorAll('#prodBody tr').forEach(tr => {
+    const text = tr.textContent.toLowerCase();
+    if (text.includes(lo)) {
+      tr.style.display = '';
+      visible++;
+      // highlight matching cells
+      tr.querySelectorAll('td').forEach(td => {
+        if (td.querySelector('.pill') || td.querySelector('.mini-bar')) return;
+        const orig = td.dataset.orig || td.innerHTML;
+        td.dataset.orig = orig;
+        const re = new RegExp(`(${lo.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+        td.innerHTML = orig.replace(re, '<mark class="srch-highlight">$1</mark>');
+      });
+    } else {
+      tr.style.display = 'none';
+    }
+  });
+
+  // show banner
+  banner.style.display = visible ? 'flex' : 'none';
+  $('srchMsg').textContent = visible
+    ? `🔍 Showing ${visible} result${visible>1?'s':''} for "${searchQuery}"`
+    : '';
+
+  // show no-results
+  noRes.style.display = visible ? 'none' : 'block';
+  $('noResultsTerm').textContent = searchQuery;
+}
+
+function searchKeydown(e) {
+  // Tab key confirms and moves focus away from input cleanly
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    liveSearch($('srch').value);
+    $('srch').blur();
+    toast(`Searched for "${$('srch').value}" — ${
+      document.querySelectorAll('#prodBody tr:not([style*="none"])').length
+    } result(s) found`);
+  }
+  // Escape clears
+  if (e.key === 'Escape') clearSearch();
+}
+
+function clearSearch() {
+  $('srch').value = '';
+  searchQuery = '';
+  $('srchClear').style.display = 'none';
+  $('srchBanner').style.display = 'none';
+  $('noResults').style.display = 'none';
+  buildTable(); // rebuild removes highlights
+}
+
+// ── EXPORT — multiple datasets + toast feedback ────────
+function showExportMenu(e) {
+  e.stopPropagation();
+  const menu = $('exportMenu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+function exportData(type) {
+  $('exportMenu').style.display = 'none';
+  let rows, filename;
+
+  if (type === 'products') {
+    rows = [['Product','Category','Revenue ($)','Units Sold','Avg Unit Price ($)'],
+      ...D.products.map(p=>[p.n, p.c, p.rev, p.u, p.p])];
+    filename = 'storepulse_products_2023.csv';
+  } else if (type === 'monthly') {
+    rows = [['Month','Revenue ($)','Orders'],
+      ...D.months.map((m,i)=>[m, D.revenue[i], D.orders[i]])];
+    filename = 'storepulse_monthly_revenue_2023.csv';
+  } else if (type === 'customers') {
+    rows = [['Customer ID','Total Revenue ($)'],
+      ...D.customers.ids.map((id,i)=>[id, D.customers.rev[i]])];
+    filename = 'storepulse_customers_2023.csv';
+  } else {
+    // all — combine all sheets separated by blank rows
+    rows = [
+      ['=== PRODUCTS ==='],
+      ['Product','Category','Revenue ($)','Units Sold','Avg Unit Price ($)'],
+      ...D.products.map(p=>[p.n, p.c, p.rev, p.u, p.p]),
+      [],
+      ['=== MONTHLY REVENUE ==='],
+      ['Month','Revenue ($)','Orders'],
+      ...D.months.map((m,i)=>[m, D.revenue[i], D.orders[i]]),
+      [],
+      ['=== TOP CUSTOMERS ==='],
+      ['Customer ID','Total Revenue ($)'],
+      ...D.customers.ids.map((id,i)=>[id, D.customers.rev[i]]),
+      [],
+      ['=== CATEGORIES ==='],
+      ['Category','Revenue ($)','Avg Unit Price ($)'],
+      ...D.cats.labels.map((l,i)=>[l, D.cats.revenue[i], D.cats.avgPrice[i]]),
+    ];
+    filename = 'storepulse_full_report_2023.csv';
+  }
+
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast(`✓ Exported ${filename}`);
+}
+
+// ── TOAST ─────────────────────────────────────────────
+function toast(msg, duration=3000) {
+  const t = $('toast');
+  $('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ── INSIGHT NAVIGATION ────────────────────────────────
+function goInsight(tab) {
+  const navBtns = document.querySelectorAll('.nav-item');
+  const tabMap = { overview:0, sales:1, products:2, customers:3, insights:4, limitations:5 };
+  const btn = navBtns[tabMap[tab]];
+  if (btn) go(tab, btn);
+  toast(`Navigated to ${tab.charAt(0).toUpperCase()+tab.slice(1)} →`);
+}
+
+// ── TAB ROUTER ────────────────────────────────────────
+const built={};
+function go(name,btn){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('view-'+name).classList.add('active');
+  if(!built[name]){
+    built[name]=true;
+    if(name==='sales')    {buildDual();buildWD();buildQ();buildDisc();buildShip();}
+    if(name==='products') {buildTop10();buildBot5();buildCatBar();buildPrice();}
+    if(name==='customers'){buildCustomers();}
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────
+buildMonthly();
+buildCat();
+buildTable();
+buildRegions();
+buildStatus();
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('tr')&&!e.target.closest('.dtip'))
+    $('dtip').style.display='none';
+  if(!e.target.closest('#exportMenu')&&!e.target.closest('.btn-ghost'))
+    { const m=$('exportMenu'); if(m) m.style.display='none'; }
+});
+</script>
+</body>
+</html>
